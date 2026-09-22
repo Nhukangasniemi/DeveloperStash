@@ -393,6 +393,16 @@ Freemium model.
 
 **General direction:** modern, minimal, developer-focused. Dark mode by default, light mode optional. Clean typography, generous whitespace, subtle borders/shadows. Reference points: [Notion](https://notion.so), [Linear](https://linear.app), [Raycast](https://raycast.com). Syntax highlighting on all code blocks.
 
+## Screenshots
+
+Refer to the screenshots below as a base for the dashboard ui. It doesn't have to be exact. Use it as a reference.
+- @context/screenshots/dashboard-ui-main.png
+- @context/screenshots/dashboard-ui-drawer.png
+For responsive/mobile version, reference these:
+- @context/screenshots/dashboard-ui-main-responsive.png
+- @context/screenshots/dashboard-ui-drawer-responsive.png
+- @context/screenshots/dashboard-ui-menu-responsive.png
+
 ### 8.1 Layout
 
 - **Sidebar** (collapsible): item types with links to their items (snippets, commands, etc.), plus latest collections
