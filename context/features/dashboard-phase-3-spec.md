@@ -15,6 +15,8 @@ This is phase 3 of 3 for the dashboard UI layout. Use the screenshot referenced 
 ## References
 
 - @context/screenshots/dashboard-ui-main.png
+- @context/screenshots/dashboard-ui-main-responsive.png
+- @context/screenshots/dashboard-ui-menu-responsive.png
 - @context/project-overview.md
 - @src/lib/mock-data.js
 - @context/features/dashboard-phase-1-spec.md

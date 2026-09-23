@@ -1,18 +1,38 @@
 # Current Feature
 
-<!-- Feature name and short description -->
+Dashboard UI Phase 3 — Main area. The dashboard content to the right of the
+sidebar: stats, collections, and items.
 
 ## Status
-<!-- Not Started | In Progress | Completed -->
+
+In Progress
 
 ## Goals
-<!-- Goals and requirements -->
+
+- The main area to the right
+- Recent collections
+- Pinned items
+- 10 recent items
+- 4 stats cards at the top — total items, collections, favorite items, favorite
+  collections (not in the screenshot)
 
 ## References
-<!-- Links to spec docs and related files -->
+
+- @context/features/dashboard-phase-3-spec.md
+- @context/screenshots/dashboard-ui-main.png
+- @context/screenshots/dashboard-ui-main-responsive.png
+- @context/project-overview.md
+- @src/lib/mock-data.ts
 
 ## Notes
-<!-- Any extra notes -->
+
+- Final phase of 3 for the dashboard UI layout.
+- Import mock data directly from `src/lib/mock-data.ts` until the database lands.
+- The spec references `src/lib/mock-data.js`; the real file is `.ts`.
+- `src/lib/item-types.ts` (phase 2) already maps icon names, labels, and hrefs —
+  reuse it for the item and collection cards.
+- Collection cards are tinted by their dominant item type, but nothing in the
+  mock data links a collection to a type yet; that field is still needed.
 
 ## History
 <!-- Keep this updated. Earliest to latest -->
