@@ -1,5 +1,6 @@
 import { Plus, Search } from "lucide-react";
 
+import { SidebarTrigger } from "@/components/dashboard/SidebarTrigger";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -11,7 +12,9 @@ import { Input } from "@/components/ui/input";
  */
 export function TopBar() {
   return (
-    <header className="flex h-14 shrink-0 items-center gap-4 border-b px-4">
+    <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4 sm:gap-4">
+      <SidebarTrigger />
+
       <div className="relative w-full max-w-md">
         <Search
           aria-hidden="true"
@@ -30,7 +33,7 @@ export function TopBar() {
 
       <Button size="lg" className="ml-auto">
         <Plus />
-        New Item
+        <span className="hidden sm:inline">New Item</span>
       </Button>
     </header>
   );
