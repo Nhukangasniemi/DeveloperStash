@@ -1,32 +1,18 @@
 # Current Feature
 
-## Dashboard UI — Phase 1
-
-The foundation of the DevStash dashboard layout: top bar with search & new-item button, placeholder sidebar and main area. Establishes routing, dark mode, and shadcn/ui setup.
+<!-- Feature name and short description -->
 
 ## Status
-
-In Progress
+<!-- Not Started | In Progress | Completed -->
 
 ## Goals
-
-- Set up shadcn/ui with initial component installation
-- Create `/dashboard` route with main layout
-- Implement dark mode by default
-- Build top bar with search input and new-item button (display-only for now)
-- Add placeholder sections for sidebar and main area
-- Establish global styles and layout structure
+<!-- Goals and requirements -->
 
 ## References
-
-- @context/screenshots/dashboard-ui-main.png — visual target
-- @src/lib/mock-data.ts — data shapes available
-- @context/features/dashboard-phase-2-spec.md — sidebar, collections grid
-- @context/features/dashboard-phase-3-spec.md — all-items view, item cards
+<!-- Links to spec docs and related files -->
 
 ## Notes
-
-This is phase 1 of 3. Phases 2 and 3 build out the sidebar and grid of collection cards.
+<!-- Any extra notes -->
 
 ## History
 <!-- Keep this updated. Earliest to latest -->
@@ -38,7 +24,12 @@ This is phase 1 of 3. Phases 2 and 3 build out the sidebar and grid of collectio
   - Minimal layout and page scaffolding in place
   - Context files created (project-overview, coding-standards, ai-interaction)
 
-- **2026-09-23**: Dashboard Phase 1 — Foundation
-  - Mock data structure created (Item, ItemType, Collection, User, itemTypeCounts)
-  - Beginning shadcn/ui setup and /dashboard route implementation
-  - Building top bar, placeholder sidebar, and main area layouts
+- **2026-09-23**: Dashboard Phase 1 — Foundation (completed)
+  - Mock data structure created (Item, ItemType, Collection, User, mockItemTypeCounts)
+  - shadcn/ui initialized (radix base, nova preset) — `components.json`, `src/lib/utils.ts`
+  - Installed `button` and `input` components
+  - `/dashboard` route with nested layout: sidebar column, top bar, main area
+  - `TopBar` component — search field with ⌘K hint and New Item button (display only)
+  - Dark mode by default via `dark` class on `<html>`
+  - Renamed font vars to `--font-sans` / `--font-mono` so Geist reaches Tailwind's theme
+  - Built on branch `feat/dashboard-phase-1`
