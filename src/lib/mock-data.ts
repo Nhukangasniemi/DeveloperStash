@@ -49,6 +49,17 @@ export interface Item {
   updatedAt: string;
 }
 
+/**
+ * Join row between items and collections. Items and collections are
+ * many-to-many: an item can sit in several collections, and a collection holds
+ * items of any type.
+ */
+export interface ItemCollection {
+  itemId: string;
+  collectionId: string;
+  addedAt: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -394,6 +405,81 @@ strings that match and three that look like they should but don't.`,
     tags: ["react", "docs"],
     createdAt: "2026-09-01T07:15:00.000Z",
     updatedAt: "2026-09-13T12:00:00.000Z",
+  },
+];
+
+/**
+ * Which items sit in which collections.
+ *
+ * `Collection.itemCount` is the real total; these rows only cover the items in
+ * MOCK_ITEMS, so a collection can have rows for fewer items than it claims —
+ * and Python Snippets has none at all.
+ */
+export const MOCK_ITEM_COLLECTIONS: ItemCollection[] = [
+  {
+    itemId: "item_use_debounce",
+    collectionId: "col_react_patterns",
+    addedAt: "2026-06-02T15:35:00.000Z",
+  },
+  {
+    itemId: "item_use_debounce",
+    collectionId: "col_interview_prep",
+    addedAt: "2026-06-04T09:00:00.000Z",
+  },
+  {
+    itemId: "item_optimistic_update",
+    collectionId: "col_react_patterns",
+    addedAt: "2026-07-12T11:25:00.000Z",
+  },
+  {
+    itemId: "item_refactor_rsc",
+    collectionId: "col_prototype_prompts",
+    addedAt: "2026-06-19T09:15:00.000Z",
+  },
+  {
+    itemId: "item_explain_regex",
+    collectionId: "col_prototype_prompts",
+    addedAt: "2026-07-30T14:55:00.000Z",
+  },
+  {
+    itemId: "item_kill_port",
+    collectionId: "col_shell_devops",
+    addedAt: "2026-04-25T12:10:00.000Z",
+  },
+  {
+    itemId: "item_docker_prune",
+    collectionId: "col_shell_devops",
+    addedAt: "2026-08-08T16:10:00.000Z",
+  },
+  {
+    itemId: "item_release_checklist",
+    collectionId: "col_shell_devops",
+    addedAt: "2026-08-19T09:45:00.000Z",
+  },
+  {
+    itemId: "item_system_design_checklist",
+    collectionId: "col_interview_prep",
+    addedAt: "2026-07-18T10:00:00.000Z",
+  },
+  {
+    itemId: "item_tailwind_upgrade",
+    collectionId: "col_reading_list",
+    addedAt: "2026-05-28T10:30:00.000Z",
+  },
+  {
+    itemId: "item_react19_notes",
+    collectionId: "col_reading_list",
+    addedAt: "2026-09-01T07:20:00.000Z",
+  },
+  {
+    itemId: "item_agent_context",
+    collectionId: "col_context_files",
+    addedAt: "2026-06-20T08:35:00.000Z",
+  },
+  {
+    itemId: "item_dashboard_inspiration",
+    collectionId: "col_design_refs",
+    addedAt: "2026-07-05T17:50:00.000Z",
   },
 ];
 

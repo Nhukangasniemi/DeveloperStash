@@ -10,7 +10,6 @@ import {
   Layers,
   Plus,
   Settings,
-  Sparkles,
   Star,
   type LucideIcon,
 } from "lucide-react";
@@ -29,6 +28,7 @@ import {
 } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -95,10 +95,9 @@ function SidebarLink({
           <span className="truncate">{label}</span>
           <span className="ml-auto flex shrink-0 items-center gap-1.5">
             {showProBadge && (
-              <Sparkles
-                aria-label="Pro"
-                className="size-3.5 text-violet-400"
-              />
+              <Badge className="border-transparent bg-amber-400/15 px-1.5 py-0 text-[10px] font-semibold text-amber-400">
+                Pro
+              </Badge>
             )}
             {showFavoriteStar && (
               <Star
@@ -320,10 +319,7 @@ export function SidebarContent({
       {!MOCK_USER.isPro && !collapsed && (
         <div className="shrink-0 p-2">
           <div className="rounded-lg border p-3">
-            <p className="flex items-center gap-2 text-sm font-medium">
-              <Sparkles className="size-4 text-violet-400" />
-              Upgrade to Pro
-            </p>
+            <p className="text-sm font-medium">Upgrade to Pro</p>
             <p className="mt-1 text-xs text-muted-foreground">
               Unlimited items, file uploads, and AI features.
             </p>
