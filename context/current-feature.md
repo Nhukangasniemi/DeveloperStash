@@ -1,38 +1,18 @@
 # Current Feature
 
-Dashboard UI Phase 3 — Main area. The dashboard content to the right of the
-sidebar: stats, collections, and items.
+<!-- Feature name and short description -->
 
 ## Status
-
-In Progress
+<!-- Not Started | In Progress | Completed -->
 
 ## Goals
-
-- The main area to the right
-- Recent collections
-- Pinned items
-- 10 recent items
-- 4 stats cards at the top — total items, collections, favorite items, favorite
-  collections (not in the screenshot)
+<!-- Goals and requirements -->
 
 ## References
-
-- @context/features/dashboard-phase-3-spec.md
-- @context/screenshots/dashboard-ui-main.png
-- @context/screenshots/dashboard-ui-main-responsive.png
-- @context/project-overview.md
-- @src/lib/mock-data.ts
+<!-- Links to spec docs and related files -->
 
 ## Notes
-
-- Final phase of 3 for the dashboard UI layout.
-- Import mock data directly from `src/lib/mock-data.ts` until the database lands.
-- The spec references `src/lib/mock-data.js`; the real file is `.ts`.
-- `src/lib/item-types.ts` (phase 2) already maps icon names, labels, and hrefs —
-  reuse it for the item and collection cards.
-- Collection cards are tinted by their dominant item type, but nothing in the
-  mock data links a collection to a type yet; that field is still needed.
+<!-- Any extra notes -->
 
 ## History
 <!-- Keep this updated. Earliest to latest -->
@@ -76,3 +56,32 @@ In Progress
     resolve (`notFound()` on unknown slugs); real pages land in phase 3
   - Active route highlighting via `usePathname` + `aria-current`
   - Built on branch `feat/dashboard-phase-2`
+
+- **2026-09-23**: Dashboard Phase 3 — Main area (completed)
+  - Installed shadcn `card`
+  - `StatsCards` — items, collections, favorite items, favorite collections
+  - Dashboard sections: recent collections, pinned items, 10 recent items
+    (pinned excluded from recent so nothing appears twice)
+  - `CollectionCard` — accent color and the icon row along the bottom are both
+    derived from the collection's own items, most dominant type first; a
+    collection with no items renders untinted, there is no default color
+  - `ItemCard` — type badge, preview that varies by content type, tags,
+    collection count, left border in the type color
+  - `MOCK_ITEM_COLLECTIONS` — join table for the item ↔ collection
+    many-to-many, mirroring `ItemCollection`; `Item` and `Collection` gained no
+    fields
+  - `src/lib/collections.ts` — reads across the join (`getItemsInCollection`,
+    `getCollectionsForItem`, `getTypeBreakdown`, `getDominantType`); ties in the
+    breakdown go to the most recently added type
+  - `src/lib/format.ts` — relative times measured from `MOCK_NOW`, not the real
+    clock, so server and client render the same string
+  - `TypeIcon` — resolves stored lucide icon names in one place, via
+    `createElement` to satisfy `react-hooks/static-components`
+  - Sidebar Pro marker changed from `Sparkles` (the prompt type's own icon) to
+    an amber "Pro" badge
+  - Placeholder `/collections` page for the dashboard's "View all"
+  - Everything in the main area is a server component; only the sidebar and its
+    trigger are client
+  - Built on branch `feat/dashboard-phase-3`
+  - Known gap: stats count real mock records, but each collection card shows
+    `itemCount` (its claimed total), which is larger than the join rows
