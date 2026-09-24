@@ -123,15 +123,17 @@ erDiagram
     USER ||--o{ TAG : owns
 
     ITEM_TYPE ||--o{ ITEM : categorizes
-    ITEM }o--o{ TAG : "tagged with"
-    ITEM ||--o{ ITEM_COLLECTION : "linked via"
-    COLLECTION ||--o{ ITEM_COLLECTION : "linked via"
+    COLLECTION ||--o{ ITEM : contains
+    ITEM ||--o{ ITEM_TAG : "linked via"
+    TAG ||--o{ ITEM_TAG : "linked via"
 
     USER {
         string id PK
         string email
+        string password
         boolean isPro
         string stripeCustomerId
+        string stripeSubscriptionId
     }
     ITEM {
         string id PK
@@ -139,9 +141,16 @@ erDiagram
         string contentType
         string content
         string fileUrl
+        string fileName
+        int fileSize
         string url
+        string description
         boolean isFavorite
         boolean isPinned
+        string language
+        string userId FK
+        string typeId FK
+        string collectionId FK
     }
     ITEM_TYPE {
         string id PK
@@ -149,20 +158,23 @@ erDiagram
         string icon
         string color
         boolean isSystem
+        string userId FK
     }
     COLLECTION {
         string id PK
         string name
+        string description
         boolean isFavorite
+        string userId FK
     }
-    ITEM_COLLECTION {
+    ITEM_TAG {
         string itemId FK
-        string collectionId FK
-        datetime addedAt
+        string tagId FK
     }
     TAG {
         string id PK
         string name
+        string userId FK
     }
 ```
 
@@ -171,172 +183,94 @@ erDiagram
 Not final — a starting point to formalize into real migrations. Auth models follow the standard [Auth.js Prisma adapter](https://authjs.dev/getting-started/adapters/prisma) shape so `@auth/prisma-adapter` can be dropped in as-is.
 
 ```prisma
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-// ── Auth (Auth.js / NextAuth v5) ───────────────────────────────
-
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-
-  // Billing
-  isPro                Boolean @default(false)
-  stripeCustomerId     String? @unique
-  stripeSubscriptionId String? @unique
-
-  accounts    Account[]
-  sessions    Session[]
-  items       Item[]
-  itemTypes   ItemType[]
-  collections Collection[]
-  tags        Tag[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model VerificationToken {
-  identifier String
-  token      String
-  expires    DateTime
-
-  @@unique([identifier, token])
-}
-
-// ── Core domain ─────────────────────────────────────────────────
-
-enum ContentType {
-  TEXT
-  FILE
-}
-
-model ItemType {
-  id       String  @id @default(cuid())
-  name     String // "snippet" | "prompt" | "note" | "command" | "file" | "image" | "link" | custom
-  icon     String // lucide-react icon name
-  color    String // hex
-  isSystem Boolean @default(false)
-
-  userId String? // null for system types
-  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  items Item[]
-
-  createdAt DateTime @default(now())
-
-  @@unique([userId, name])
+  id                   String   @id @default(cuid())
+  email                String   @unique
+  password             String?
+  isPro                Boolean  @default(false)
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  items                Item[]
+  itemTypes            ItemType[]
+  collections          Collection[]
+  tags                 Tag[]
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }
 
 model Item {
-  id          String      @id @default(cuid())
+  id          String   @id @default(cuid())
   title       String
-  contentType ContentType
+  contentType String   // text | file
+  content     String?  // used for text types
+  fileUrl     String?
+  fileName    String?
+  fileSize    Int?
+  url         String?
+  description String?
+  isFavorite  Boolean  @default(false)
+  isPinned    Boolean  @default(false)
+  language    String?
 
-  content     String? @db.Text // text body; null for file types
-  fileUrl     String? // R2 object URL; null for text types
-  fileName    String? // original filename
-  fileSize    Int? // bytes
-  url         String? // for `link` type
-  description String? @db.Text
-  language    String? // optional, for code snippets
+  userId      String
+  user        User @relation(fields: [userId], references: [id])
 
-  isFavorite Boolean @default(false)
-  isPinned   Boolean @default(false)
+  typeId      String
+  type        ItemType @relation(fields: [typeId], references: [id])
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collectionId String?
+  collection   Collection? @relation(fields: [collectionId], references: [id])
 
-  itemTypeId String
-  itemType   ItemType @relation(fields: [itemTypeId], references: [id])
+  tags        ItemTag[]
 
-  tags        Tag[] // implicit many-to-many
-  collections ItemCollection[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model ItemType {
+  id       String   @id @default(cuid())
+  name     String
+  icon     String?
+  color    String?
+  isSystem Boolean  @default(false)
 
-  @@index([userId])
-  @@index([itemTypeId])
+  userId   String?
+  user     User? @relation(fields: [userId], references: [id])
+
+  items    Item[]
 }
 
 model Collection {
-  id          String  @id @default(cuid())
-  name        String // e.g. "React Hooks", "Prototype Prompts", "Context Files"
+  id          String   @id @default(cuid())
+  name        String
   description String?
-  isFavorite  Boolean @default(false)
+  isFavorite  Boolean  @default(false)
 
-  defaultTypeId String? // suggested type for new items added with no items yet
+  userId      String
+  user        User @relation(fields: [userId], references: [id])
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  items ItemCollection[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-}
-
-model ItemCollection {
-  itemId       String
-  collectionId String
-  addedAt      DateTime @default(now())
-
-  item       Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
-
-  @@id([itemId, collectionId])
+  items       Item[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Tag {
-  id   String @id @default(cuid())
-  name String
-
+  id     String @id @default(cuid())
+  name   String
   userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User @relation(fields: [userId], references: [id])
 
-  items Item[]
+  items  ItemTag[]
+}
 
-  @@unique([userId, name])
+model ItemTag {
+  itemId String
+  tagId  String
+
+  item Item @relation(fields: [itemId], references: [id])
+  tag  Tag  @relation(fields: [tagId], references: [id])
+
+  @@id([itemId, tagId])
 }
 ```
 
