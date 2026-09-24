@@ -303,6 +303,12 @@ flowchart LR
     API -->|checkout / webhooks| Stripe["Stripe"]
 ```
 
+> The diagram shows every path through `/app/api/*`, but that is not the default.
+> Server components read Prisma directly and Server Actions handle writes; API routes
+> are reserved for webhooks, uploads, long-running work and external clients. See
+> [state-management.md](./state-management.md) for the full frontend state strategy,
+> including why TanStack Query is deferred.
+
 ## 7. Monetization
 
 Freemium model.
@@ -366,3 +372,4 @@ See the table in [§3.1](#31-items--item-types) — reused consistently across s
 
 - **Never** use `prisma db push` or hand-edit the database schema directly. All schema changes go through **Prisma Migrate**, run in dev first, then promoted to prod.
 - Data model above is a draft — expect it to shift as features are implemented; keep this doc in sync with the real `schema.prisma`.
+- No global client state store, and no client-side data cache at MVP. Every piece of state belongs to one of the four buckets in [state-management.md](./state-management.md).
