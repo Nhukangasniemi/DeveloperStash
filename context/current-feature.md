@@ -221,3 +221,26 @@
   - Still mock: items section, `ItemCard`, sidebar types/user. `getTypeBreakdown`
     and `getDominantType` in `src/lib/collections.ts` are now unused
   - Built on branch `feat/dashboard-collections`
+
+- **2026-09-28**: Dashboard items — real data from Neon (completed)
+  - Per `context/features/dashboard-items-spec.md`: the dashboard's pinned and
+    recent items read from Postgres via Prisma instead of `mock-data.ts`
+  - `src/lib/db/items.ts` — `getPinnedItems`, `getRecentItems` (pinned
+    excluded, optional limit) and `getItemStats`; all owner-scoped, one query
+    each with type, tags and collection count selected alongside
+  - The payload column differs by `contentType`, so it is resolved to a single
+    `preview` string in the data layer — `content` for TEXT, `url` for URL,
+    `fileName` (or the `fileUrl` basename) for FILE
+  - `ItemCard` takes an `ItemSummary`; icon, border and badge come from the
+    item's real type, collection count from the join. Layout unchanged
+  - Pinned section still renders nothing when there are no pinned items
+  - Stats: item totals and favourites now from the database too, so
+    `StatsCards` no longer touches mock data
+  - The recent list has no limit — the `/items` pages are still placeholders,
+    so the dashboard is the only place to see every item. Reinstate a limit
+    once a full list exists; the section is still labelled "Recent"
+  - Verified against the seed: 18 items, 3 favourites, 3 pinned + 15 recent
+  - No tags render yet — the seed creates none
+  - Still mock: sidebar types, their counts and the user. `src/lib/collections.ts`
+    is now entirely unused
+  - Built on branch `feat/dashboard-items`

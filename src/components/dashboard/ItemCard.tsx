@@ -3,39 +3,37 @@ import { Pin, Star } from "lucide-react";
 import { TypeIcon } from "@/components/dashboard/TypeIcon";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { getCollectionsForItem } from "@/lib/collections";
+import type { ItemSummary } from "@/lib/db/items";
 import { formatCount, formatRelativeTime } from "@/lib/format";
-import { MOCK_ITEM_TYPES, type Item } from "@/lib/mock-data";
-
-const TYPES_BY_ID = new Map(MOCK_ITEM_TYPES.map((type) => [type.id, type]));
 
 /** Code and prose get a monospace block; links and files read as a single line. */
-function ItemPreview({ item }: { item: Item }) {
+function ItemPreview({ item }: { item: ItemSummary }) {
+  if (!item.preview) return null;
+
   if (item.contentType === "URL") {
     return (
-      <p className="truncate text-xs text-muted-foreground">{item.content}</p>
+      <p className="truncate text-xs text-muted-foreground">{item.preview}</p>
     );
   }
 
   if (item.contentType === "FILE") {
     return (
       <p className="truncate font-mono text-xs text-muted-foreground">
-        {item.content.split("/").pop()}
+        {item.preview}
       </p>
     );
   }
 
   return (
     <pre className="max-h-24 overflow-hidden rounded-md bg-muted/50 p-2.5 font-mono text-xs leading-relaxed text-muted-foreground">
-      {item.content}
+      {item.preview}
     </pre>
   );
 }
 
-export function ItemCard({ item }: { item: Item }) {
-  const type = TYPES_BY_ID.get(item.itemTypeId);
-  const accent = type?.color;
-  const collectionCount = getCollectionsForItem(item.id).length;
+export function ItemCard({ item }: { item: ItemSummary }) {
+  const { type } = item;
+  const accent = type.color;
 
   return (
     <Card
@@ -45,21 +43,19 @@ export function ItemCard({ item }: { item: Item }) {
     >
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-2 text-xs text-muted-foreground">
-          {type && (
-            <>
-              <span
-                className="flex size-6 items-center justify-center rounded-md"
-                style={
-                  accent
-                    ? { backgroundColor: `${accent}1f`, color: accent }
-                    : undefined
-                }
-              >
-                <TypeIcon iconName={type.icon} className="size-3.5" />
-              </span>
-              <span className="capitalize">{type.name}</span>
-            </>
-          )}
+          <span
+            className="flex size-6 items-center justify-center rounded-md"
+            style={
+              accent
+                ? { backgroundColor: `${accent}1f`, color: accent }
+                : undefined
+            }
+          >
+            {type.icon && (
+              <TypeIcon iconName={type.icon} className="size-3.5" />
+            )}
+          </span>
+          <span className="capitalize">{type.name}</span>
         </span>
 
         <span className="flex items-center gap-1.5">
@@ -93,7 +89,7 @@ export function ItemCard({ item }: { item: Item }) {
       )}
 
       <div className="mt-auto flex items-center justify-between pt-1 text-xs text-muted-foreground">
-        <span>{formatCount(collectionCount, "collection")}</span>
+        <span>{formatCount(item.collectionCount, "collection")}</span>
         <span>{formatRelativeTime(item.updatedAt)}</span>
       </div>
     </Card>
