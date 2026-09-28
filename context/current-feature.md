@@ -168,3 +168,32 @@
   - Not done yet: no production Neon branch, no auth (every domain row needs a
     `userId`), and the dashboard still renders `src/lib/mock-data.ts` — whose
     readable type ids no longer match the seeded UUIDs
+
+- **2026-09-28**: Seed data — demo user, collections and sample items (completed)
+  - `prisma/seed.ts` rewritten from the types-only seed, per
+    `context/features/seed-spec.md`
+  - Demo user `demo@devstash.io` / `Demo User`, password hashed with
+    `bcryptjs` at 12 rounds, `isPro: false`, `emailVerified` set to now
+  - Seven system item types kept on their fixed reserved-block ids
+  - Five collections, 18 items: React Patterns (3 TS snippets), AI Workflows
+    (3 prompts), DevOps (snippet, command, 2 links), Terminal Commands
+    (4 commands), Design Resources (4 links); links use real URLs
+  - Items get the matching `contentType` — `TEXT` + `content` or `URL` + `url`
+    — snippets set `language`, and each is joined via `ItemCollection`
+  - A few items and collections marked favourite / pinned (not in the spec) so
+    the dashboard's pinned and favourite sections have data once wired up
+  - Idempotent: user upserted by `email`, collections by `(userId, name)`,
+    types by id. `Item` has no natural key, so the demo user's items are
+    deleted and recreated each run — item ids change on every seed
+  - `bcryptjs` 3.0.3 added, pinned (ships its own types)
+  - `tsconfig.json` no longer excludes `prisma/seed.ts` — the exclude left the
+    editor checking it without Node types (`process` errors) and hid it from
+    `tsc`
+  - Verified by seeding twice: 1 user, 7 types, 18 items, 18 join rows
+  - `scripts/test-db.ts` (`npm run db:test`) gained generic data-integrity
+    checks — data present, item payload matches `contentType`, item types are
+    system or owner's own, collection links stay within one owner, passwords
+    are bcrypt hashes — and prints the demo user's collections and items.
+    Deliberately no spec-specific counts, so it keeps passing as data changes
+  - No tags and no `file` / `image` items seeded — the spec defines none
+  - Built on branch `feat/seed-data`

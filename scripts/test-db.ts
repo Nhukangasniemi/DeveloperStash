@@ -3,7 +3,8 @@
  *
  * Run with `npm run db:test`. Checks that the app's real runtime path works:
  * the pooled Neon connection, the generated client, the schema, the seeded
- * system types, and the constraints the schema relies on.
+ * system types, the integrity of the data present, and the constraints the
+ * schema relies on. It then prints the demo user's collections and items.
  *
  * Safe to re-run. Read-only checks run directly; anything that writes runs
  * inside a transaction that is always rolled back, so the database is left
@@ -40,6 +41,9 @@ const SYSTEM_TYPE_NAMES = [
   "file",
   "image",
 ];
+
+/** Printed as a sample of the seeded data; not asserted on. */
+const DEMO_EMAIL = "demo@devstash.io";
 
 /** Thrown to roll the write checks back; never escapes `main`. */
 class Rollback extends Error {}
@@ -102,6 +106,80 @@ async function readOnlyChecks() {
   check("system types have no owner", types.every((t) => t.userId === null), "userId null");
 }
 
+function fetchDemoUser() {
+  return prisma.user.findUnique({
+    where: { email: DEMO_EMAIL },
+    include: {
+      collections: {
+        orderBy: { name: "asc" },
+        include: {
+          items: {
+            orderBy: { addedAt: "asc" },
+            include: { item: { include: { type: true } } },
+          },
+        },
+      },
+    },
+  });
+}
+
+type DemoUser = NonNullable<Awaited<ReturnType<typeof fetchDemoUser>>>;
+
+/** Integrity of whatever data is present — holds for any seed or real data. */
+async function dataChecks() {
+  const [users, collections, items] = await Promise.all([
+    prisma.user.count(),
+    prisma.collection.count(),
+    prisma.item.count(),
+  ]);
+  check("data present", users > 0 && items > 0, `${users} users, ${collections} collections, ${items} items`);
+
+  const badPayload = await prisma.item.count({
+    where: {
+      OR: [
+        { contentType: "TEXT", content: null },
+        { contentType: "URL", url: null },
+        { contentType: "FILE", fileUrl: null },
+      ],
+    },
+  });
+  check("item payload matches contentType", badPayload === 0, `${badPayload} mismatched`);
+
+  const [{ foreignType }] = await prisma.$queryRaw<{ foreignType: number }[]>`
+    SELECT count(*)::int AS "foreignType" FROM items i
+    JOIN item_types t ON t.id = i.type_id
+    WHERE t.user_id IS NOT NULL AND t.user_id <> i.user_id`;
+  check("item types system or owned", foreignType === 0, `${foreignType} items use another user's type`);
+
+  const [{ crossOwner }] = await prisma.$queryRaw<{ crossOwner: number }[]>`
+    SELECT count(*)::int AS "crossOwner" FROM item_collections ic
+    JOIN items i ON i.id = ic.item_id
+    JOIN collections c ON c.id = ic.collection_id
+    WHERE i.user_id <> c.user_id`;
+  check("collection links same owner", crossOwner === 0, `${crossOwner} cross-user links`);
+
+  const withPassword = await prisma.user.findMany({
+    where: { password: { not: null } },
+    select: { password: true },
+  });
+  const plaintext = withPassword.filter((u) => !/^\$2[aby]\$\d{2}\$/.test(u.password!)).length;
+  check("passwords bcrypt-hashed", plaintext === 0, `${withPassword.length} with password, ${plaintext} unhashed`);
+}
+
+function printDemoData(user: DemoUser) {
+  console.log(`\nDemo data — ${user.name} <${user.email}>`);
+  for (const collection of user.collections) {
+    const star = collection.isFavorite ? " ★" : "";
+    console.log(`\n  ${collection.name}${star} — ${collection.description}`);
+    for (const { item } of collection.items) {
+      const flags = [item.isPinned && "pinned", item.isFavorite && "fav"].filter(Boolean).join(", ");
+      const preview = item.url ?? item.content?.split("\n")[0] ?? "";
+      console.log(`    [${item.type.name.padEnd(7)}] ${item.title}${flags ? ` (${flags})` : ""}`);
+      console.log(`              ${preview.slice(0, 72)}`);
+    }
+  }
+}
+
 /** Writes, relations and constraints — rolled back at the end. */
 async function writeChecks() {
   try {
@@ -162,9 +240,15 @@ async function rollbackCheck() {
 
 async function main() {
   await readOnlyChecks();
+  await dataChecks();
   await writeChecks();
   await rollbackCheck();
 
+  const demoUser = await fetchDemoUser();
+  if (demoUser) printDemoData(demoUser);
+  else console.log(`\n${DEMO_EMAIL} not found — run npm run db:seed to add demo data`);
+
+  console.log();
   for (const { name, ok, detail } of results) {
     console.log(`${ok ? "PASS" : "FAIL"}  ${name.padEnd(34)} ${detail}`);
   }
