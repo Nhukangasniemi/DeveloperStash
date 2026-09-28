@@ -267,3 +267,18 @@
     placeholder still matches against `MOCK_ITEM_TYPES`; names match the
     seeded types, so links resolve
   - Built on branch `feature/stats-sidebar`
+
+- **2026-09-28**: Sidebar user — real data from Neon (completed)
+  - The sidebar's user footer, Pro badges and Upgrade card read the current
+    user from Postgres instead of `MOCK_USER`
+  - `getCurrentUser` in `src/lib/db/users.ts` — id, name, email, image, isPro;
+    wrapped in React `cache` so the layout and page share one query per
+    request. `getCurrentUserId` now delegates to it
+  - Dashboard layout fetches the user and passes it through `Sidebar` to both
+    `SidebarContent` instances (desktop rail and mobile drawer)
+  - Display name falls back to the email when `name` is null; initials are
+    uppercased
+  - Verified: `/dashboard` renders "Demo User" / "DU" and the Upgrade card
+  - Still the seeded demo user until auth lands. `MOCK_USER` is now unused but
+    left in `mock-data.ts`
+  - Built on branch `feature/sidebar-user`
