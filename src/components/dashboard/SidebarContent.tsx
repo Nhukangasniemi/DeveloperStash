@@ -22,7 +22,7 @@ import {
 } from "@/lib/item-types";
 import type { CollectionSummary } from "@/lib/db/collections";
 import type { ItemTypeCount } from "@/lib/db/items";
-import { MOCK_USER } from "@/lib/mock-data";
+import type { CurrentUser } from "@/lib/db/users";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -156,6 +156,7 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 }
 
 interface SidebarContentProps {
+  user: CurrentUser;
   /** System types first, then the user's custom ones, with the user's item counts. */
   itemTypes: ItemTypeCount[];
   /** Most recently updated first, matching the dashboard's collection grid. */
@@ -176,6 +177,7 @@ interface SidebarContentProps {
  * so the two can't drift apart.
  */
 export function SidebarContent({
+  user,
   itemTypes,
   collections,
   collapsed = false,
@@ -191,11 +193,14 @@ export function SidebarContent({
   );
   const recentCollections = collections.slice(0, RECENT_COLLECTION_LIMIT);
 
-  const initials = MOCK_USER.name
+  // Name is optional on the user, so fall back to the email, which is not.
+  const displayName = user.name ?? user.email;
+  const initials = displayName
     .split(" ")
     .map((part) => part[0])
     .join("")
-    .slice(0, 2);
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -257,7 +262,7 @@ export function SidebarContent({
                   iconColor={type.color ?? undefined}
                   label={getTypeLabel(type.name)}
                   count={type.count}
-                  showProBadge={isProType(type.name) && !MOCK_USER.isPro}
+                  showProBadge={isProType(type.name) && !user.isPro}
                   collapsed={collapsed}
                   onNavigate={onNavigate}
                 />
@@ -330,7 +335,7 @@ export function SidebarContent({
         </div>
       </nav>
 
-      {!MOCK_USER.isPro && !collapsed && (
+      {!user.isPro && !collapsed && (
         <div className="shrink-0 p-2">
           <div className="rounded-lg border p-3">
             <p className="text-sm font-medium">Upgrade to Pro</p>
@@ -351,15 +356,13 @@ export function SidebarContent({
         )}
       >
         <Avatar className="size-8">
-          {MOCK_USER.image && (
-            <AvatarImage src={MOCK_USER.image} alt={MOCK_USER.name} />
-          )}
+          {user.image && <AvatarImage src={user.image} alt={displayName} />}
           <AvatarFallback>{initials}</AvatarFallback>
         </Avatar>
         {!collapsed && (
           <>
             <span className="truncate text-sm font-medium">
-              {MOCK_USER.name}
+              {displayName}
             </span>
             <Button
               variant="ghost"
