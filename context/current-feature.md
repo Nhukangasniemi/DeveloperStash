@@ -197,3 +197,27 @@
     Deliberately no spec-specific counts, so it keeps passing as data changes
   - No tags and no `file` / `image` items seeded — the spec defines none
   - Built on branch `feat/seed-data`
+
+- **2026-09-28**: Dashboard collections — real data from Neon (completed)
+  - Per `context/features/dashboard-collections-spec.md`: the dashboard's
+    collection cards read from Postgres via Prisma instead of `mock-data.ts`
+  - `src/lib/db/collections.ts` — `getRecentCollections` (one query, items'
+    types selected through the join), `getCollectionStats`, and
+    `getCollectionName`; all owner-scoped. Type breakdown computed there, ties
+    still go to the most recently added type
+  - `src/lib/db/users.ts` — `getCurrentUserId` returns the seeded demo user
+    until auth lands. Calls `connection()` so pages render per request —
+    without it Next prerendered `/dashboard` at build and froze the data
+  - Dashboard shows the 6 most recent collections; card border and type icons
+    come from the real item types; item count is the real join count (closes
+    phase 3's `itemCount` gap)
+  - Stats: collection totals from the database, item totals still mock
+  - Beyond the spec, to keep links working with real UUIDs: `/collections`,
+    `/collections/[id]` (non-uuid ids 404 before hitting Postgres) and the
+    sidebar's collection list now use the database too, the sidebar fed from
+    the layout. Sidebar types and user remain mock
+  - `formatRelativeTime` measures from the real clock; `MOCK_NOW` no longer
+    used there, so mock item cards show drifting ages
+  - Still mock: items section, `ItemCard`, sidebar types/user. `getTypeBreakdown`
+    and `getDominantType` in `src/lib/collections.ts` are now unused
+  - Built on branch `feat/dashboard-collections`
