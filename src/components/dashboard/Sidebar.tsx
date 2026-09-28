@@ -15,6 +15,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import type { ItemTypeCount } from "@/lib/db/items";
 import { cn } from "@/lib/utils";
 
 /**
@@ -24,8 +25,10 @@ import { cn } from "@/lib/utils";
  * Mobile: always a slide-over drawer, opened from the top bar.
  */
 export function Sidebar({
+  itemTypes,
   collections,
 }: {
+  itemTypes: ItemTypeCount[];
   collections: SidebarCollection[];
 }) {
   const { collapsed, toggleCollapsed, mobileOpen, setMobileOpen } =
@@ -53,6 +56,7 @@ export function Sidebar({
           )}
         >
           <SidebarContent
+            itemTypes={itemTypes}
             collections={collections}
             collapsed={collapsed}
             headerAction={collapseToggle}
@@ -70,6 +74,7 @@ export function Sidebar({
             Browse item types and collections.
           </SheetDescription>
           <SidebarContent
+            itemTypes={itemTypes}
             collections={collections}
             onNavigate={() => setMobileOpen(false)}
           />

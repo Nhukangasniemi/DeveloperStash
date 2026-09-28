@@ -21,34 +21,31 @@ import {
   isProType,
 } from "@/lib/item-types";
 import type { CollectionSummary } from "@/lib/db/collections";
-import {
-  MOCK_ITEM_TYPES,
-  MOCK_USER,
-  mockItemTypeCounts,
-} from "@/lib/mock-data";
+import type { ItemTypeCount } from "@/lib/db/items";
+import { MOCK_USER } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-const TOTAL_ITEMS = Object.values(mockItemTypeCounts).reduce(
-  (sum, count) => sum + count,
-  0,
-);
+const RECENT_COLLECTION_LIMIT = 5;
 
 /** What the sidebar needs of a collection; the full summary stays on the server. */
 export type SidebarCollection = Pick<
   CollectionSummary,
   "id" | "name" | "isFavorite" | "itemCount"
->;
+> & {
+  /** Hex of the collection's most-used item type; null when it has no items. */
+  color: string | null;
+};
 
 interface SidebarLinkProps {
   href: string;
   icon: LucideIcon;
   label: string;
   count?: number;
-  /** Hex from the item type; only types are color-coded. */
+  /** Hex from an item type — the type itself, or a collection's dominant one. */
   iconColor?: string;
   showProBadge?: boolean;
   showFavoriteStar?: boolean;
@@ -159,6 +156,8 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 }
 
 interface SidebarContentProps {
+  /** System types first, then the user's custom ones, with the user's item counts. */
+  itemTypes: ItemTypeCount[];
   /** Most recently updated first, matching the dashboard's collection grid. */
   collections: SidebarCollection[];
   /** Icon-only rail. Desktop only — the mobile drawer is always expanded. */
@@ -177,6 +176,7 @@ interface SidebarContentProps {
  * so the two can't drift apart.
  */
 export function SidebarContent({
+  itemTypes,
   collections,
   collapsed = false,
   onNavigate,
@@ -185,9 +185,11 @@ export function SidebarContent({
   const [typesOpen, setTypesOpen] = useState(true);
   const [collectionsOpen, setCollectionsOpen] = useState(true);
 
+  const totalItems = itemTypes.reduce((sum, type) => sum + type.count, 0);
   const favoriteCollections = collections.filter(
     (collection) => collection.isFavorite,
   );
+  const recentCollections = collections.slice(0, RECENT_COLLECTION_LIMIT);
 
   const initials = MOCK_USER.name
     .split(" ")
@@ -231,7 +233,7 @@ export function SidebarContent({
           href="/dashboard"
           icon={Layers}
           label="All Items"
-          count={TOTAL_ITEMS}
+          count={totalItems}
           collapsed={collapsed}
           onNavigate={onNavigate}
         />
@@ -247,14 +249,14 @@ export function SidebarContent({
 
           {(collapsed || typesOpen) && (
             <div className="space-y-0.5">
-              {MOCK_ITEM_TYPES.map((type) => (
+              {itemTypes.map((type) => (
                 <SidebarLink
                   key={type.id}
                   href={getTypeHref(type.name)}
-                  icon={getTypeIcon(type.icon)}
-                  iconColor={type.color}
+                  icon={getTypeIcon(type.icon ?? "")}
+                  iconColor={type.color ?? undefined}
                   label={getTypeLabel(type.name)}
-                  count={mockItemTypeCounts[type.id] ?? 0}
+                  count={type.count}
                   showProBadge={isProType(type.name) && !MOCK_USER.isPro}
                   collapsed={collapsed}
                   onNavigate={onNavigate}
@@ -300,12 +302,13 @@ export function SidebarContent({
 
               {!collapsed && (
                 <>
-                  <GroupLabel>All collections</GroupLabel>
-                  {collections.map((collection) => (
+                  <GroupLabel>Recent</GroupLabel>
+                  {recentCollections.map((collection) => (
                     <SidebarLink
                       key={collection.id}
                       href={`/collections/${collection.id}`}
                       icon={Folder}
+                      iconColor={collection.color ?? undefined}
                       label={collection.name}
                       count={collection.itemCount}
                       showFavoriteStar={collection.isFavorite}
@@ -313,6 +316,13 @@ export function SidebarContent({
                       onNavigate={onNavigate}
                     />
                   ))}
+                  <Link
+                    href="/collections"
+                    onClick={onNavigate}
+                    className="block px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    View all collections
+                  </Link>
                 </>
               )}
             </div>

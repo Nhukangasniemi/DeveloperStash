@@ -2,23 +2,30 @@ import { Sidebar } from "@/components/dashboard/Sidebar";
 import { SidebarProvider } from "@/components/dashboard/SidebarProvider";
 import { TopBar } from "@/components/dashboard/TopBar";
 import { getRecentCollections } from "@/lib/db/collections";
+import { getItemTypesWithCounts } from "@/lib/db/items";
 import { getCurrentUserId } from "@/lib/db/users";
 
 export default async function DashboardLayout({
   children,
 }: LayoutProps<"/">) {
-  const collections = await getRecentCollections(await getCurrentUserId());
+  const userId = await getCurrentUserId();
+  const [collections, itemTypes] = await Promise.all([
+    getRecentCollections(userId),
+    getItemTypesWithCounts(userId),
+  ]);
 
   return (
     <SidebarProvider>
       <div className="flex h-dvh">
         <Sidebar
+          itemTypes={itemTypes}
           collections={collections.map(
-            ({ id, name, isFavorite, itemCount }) => ({
+            ({ id, name, isFavorite, itemCount, types }) => ({
               id,
               name,
               isFavorite,
               itemCount,
+              color: types[0]?.type.color ?? null,
             }),
           )}
         />

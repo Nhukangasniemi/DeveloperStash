@@ -28,6 +28,15 @@ export interface ItemSummary {
   collectionCount: number;
 }
 
+export interface ItemTypeCount {
+  id: string;
+  name: string;
+  icon: string | null;
+  color: string | null;
+  /** The user's items of this type. */
+  count: number;
+}
+
 export interface ItemStats {
   total: number;
   favorites: number;
@@ -107,6 +116,29 @@ export async function getRecentItems(
   });
 
   return rows.map(toSummary);
+}
+
+/**
+ * System types plus the user's own custom types, each with how many of the
+ * user's items it holds. System ids come from a reserved low block, so sorting
+ * by id keeps them in seed order with custom types after.
+ */
+export async function getItemTypesWithCounts(
+  userId: string,
+): Promise<ItemTypeCount[]> {
+  const rows = await prisma.itemType.findMany({
+    where: { OR: [{ isSystem: true }, { userId }] },
+    orderBy: { id: "asc" },
+    select: {
+      id: true,
+      name: true,
+      icon: true,
+      color: true,
+      _count: { select: { items: { where: { userId } } } },
+    },
+  });
+
+  return rows.map(({ _count, ...type }) => ({ ...type, count: _count.items }));
 }
 
 export async function getItemStats(userId: string): Promise<ItemStats> {
