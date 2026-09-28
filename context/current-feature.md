@@ -1,18 +1,60 @@
 # Current Feature
 
-<!-- Feature name and short description -->
+Seed data — populate the dev database with a demo user, the system item
+types, and five collections of realistic sample items for development and
+demos.
 
 ## Status
-<!-- Not Started | In Progress | Completed -->
+In Progress — implemented on `feat/seed-data`, awaiting review
 
 ## Goals
-<!-- Goals and requirements -->
+- Rewrite `prisma/seed.ts` (overwriting the current types-only seed)
+- **Demo user**
+  - Email `demo@devstash.io`, name `Demo User`
+  - Password `12345678`, hashed with `bcryptjs` at 12 rounds
+  - `isPro: false`, `emailVerified` set to the current date
+- **System item types** — all seven (`snippet`, `prompt`, `command`, `note`,
+  `file`, `image`, `link`) with the spec's icons and colors, `isSystem: true`,
+  `userId: null`
+- **Collections and items**, all owned by the demo user:
+  - **React Patterns** — _Reusable React patterns and hooks_
+    - 3 TypeScript snippets: custom hooks (`useDebounce`, `useLocalStorage`,
+      …), component patterns (context providers, compound components),
+      utility functions
+  - **AI Workflows** — _AI prompts and workflow automations_
+    - 3 prompts: code review, documentation generation, refactoring assistance
+  - **DevOps** — _Infrastructure and deployment resources_
+    - 1 snippet (Docker / CI-CD config), 1 command (deployment script),
+      2 links (real documentation URLs)
+  - **Terminal Commands** — _Useful shell commands for everyday development_
+    - 4 commands: git operations, Docker, process management, package manager
+      utilities
+  - **Design Resources** — _UI/UX resources and references_
+    - 4 links (real URLs): CSS/Tailwind reference, component library, design
+      system, icon library
+- Items use the right `contentType` for their type — `TEXT` with `content`
+  for snippets/prompts/commands, `URL` with `url` for links — and snippets set
+  `language`
+- Each item is linked to its collection through `ItemCollection`
+- Seed is idempotent: `npm run db:seed` can be re-run without duplicating rows
 
 ## References
-<!-- Links to spec docs and related files -->
+- `context/features/seed-spec.md` — the data specification
+- `prisma/seed.ts` — the seed script being replaced
+- `prisma/schema.prisma` — models and constraints the seed must satisfy
+- `context/project-overview.md` §3.1 (system types), §4.2 (data model notes)
 
 ## Notes
-<!-- Any extra notes -->
+- `bcryptjs` is not installed yet — add it (pinned, like the other deps)
+- Keep the fixed system type ids
+  (`00000000-0000-7000-8000-00000000000N`); upsert by id, since
+  `@@unique([userId, name])` cannot guard NULL-owner rows
+- Idempotency: upsert the user by `email` and collections by
+  `(userId, name)`. `Item` has no natural unique key, so clear the demo user's
+  items before recreating them (join rows cascade)
+- The spec lists no tags, and no `file` / `image` items — none are seeded
+- The dashboard still reads `src/lib/mock-data.ts`; wiring it to the database
+  is a separate feature
 
 ## History
 <!-- Keep this updated. Earliest to latest -->
