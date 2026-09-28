@@ -1,43 +1,18 @@
 # Current Feature
 
-Stats & Sidebar — real data from Neon. The dashboard stats and the sidebar's
-item types and collections read from Postgres via Prisma instead of
-`src/lib/mock-data.ts`.
+<!-- Feature name and short description -->
 
 ## Status
-In Progress
+<!-- Not Started | In Progress | Completed -->
 
 ## Goals
-- Display stats from database data, keeping the current design/layout
-- Display the system item types in the sidebar with their icons, linking to
-  `/items/[typename]`
-- Show the actual collection data from the database in the sidebar
-- Add a "View all collections" link under the sidebar's collections list that
-  goes to `/collections`
-- Keep the star icons for favorite collections; for recent collections, show a
-  folder icon colored by the most-used item type in that collection
-- Add the database functions to `src/lib/db/items.ts`, using
-  `src/lib/db/collections.ts` for reference
+<!-- Goals and requirements -->
 
 ## References
-- `context/features/stats-sidebar-spec.md`
-- `src/lib/db/collections.ts`
-- `src/lib/db/items.ts`
-- `src/lib/mock-data.ts`
+<!-- Links to spec docs and related files -->
 
 ## Notes
-- Dashboard stats were already database-backed (dashboard items feature);
-  nothing to change there
-- `src/lib/db/items.ts` already existed — `getItemTypesWithCounts` added to it:
-  system types plus the user's custom ones, ordered by id (system ids are a
-  reserved low block, so seed order holds), counts scoped to the user
-- "All Items" count in the sidebar is the sum of the type counts
-- Recent list shows the 5 most recently updated collections, folder colored
-  by the dominant type (same breakdown as the dashboard cards); a collection
-  with no items stays uncolored. Favorites keep the star
-- Still mock: sidebar user (name, avatar, `isPro`) — outside this spec, no auth
-  yet. `/items/[type]` placeholder still matches against `MOCK_ITEM_TYPES`;
-  names match the seeded types, so links resolve
+<!-- Any extra notes -->
 
 ## History
 <!-- Keep this updated. Earliest to latest -->
@@ -269,3 +244,26 @@ In Progress
   - Still mock: sidebar types, their counts and the user. `src/lib/collections.ts`
     is now entirely unused
   - Built on branch `feat/dashboard-items`
+
+- **2026-09-28**: Stats & Sidebar — real data from Neon (completed)
+  - Per `context/features/stats-sidebar-spec.md`: the sidebar's item types and
+    collections read from Postgres instead of `mock-data.ts`
+  - Dashboard stats were already database-backed from the dashboard items
+    feature; nothing changed there
+  - `getItemTypesWithCounts` added to the existing `src/lib/db/items.ts` —
+    system types plus the user's custom ones, ordered by id (system ids are a
+    reserved low block, so seed order holds), item counts scoped to the user
+  - Sidebar types link to `/items/[type]` with real icons, colors and counts;
+    "All Items" is the sum of the type counts
+  - Collections: favorites keep the star; the "All collections" group became
+    "Recent" — the 5 most recently updated, folder colored by the dominant
+    type (same breakdown as the dashboard cards), uncolored when empty
+  - "View all collections" link under the list goes to `/collections`
+  - Layout fetches collections and types in parallel and passes only each
+    collection's dominant color to the client sidebar
+  - Verified against the seed: 18 items across types, all seven type links
+    and `/collections` resolve
+  - Still mock: sidebar user (name, avatar, `isPro`). The `/items/[type]`
+    placeholder still matches against `MOCK_ITEM_TYPES`; names match the
+    seeded types, so links resolve
+  - Built on branch `feature/stats-sidebar`
