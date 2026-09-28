@@ -7,22 +7,15 @@ import {
   getCollectionStats,
   getRecentCollections,
 } from "@/lib/db/collections";
+import {
+  getItemStats,
+  getPinnedItems,
+  getRecentItems,
+} from "@/lib/db/items";
 import { getCurrentUserId } from "@/lib/db/users";
 import { formatCount } from "@/lib/format";
-import { MOCK_ITEMS } from "@/lib/mock-data";
 
 const RECENT_COLLECTION_LIMIT = 6;
-const RECENT_ITEM_LIMIT = 10;
-
-const byRecency = <T extends { updatedAt: string }>(a: T, b: T) =>
-  Date.parse(b.updatedAt) - Date.parse(a.updatedAt);
-
-const PINNED_ITEMS = MOCK_ITEMS.filter((item) => item.isPinned).sort(byRecency);
-
-/** Pinned items are already shown above, so they're left out of the recent list. */
-const RECENT_ITEMS = MOCK_ITEMS.filter((item) => !item.isPinned)
-  .sort(byRecency)
-  .slice(0, RECENT_ITEM_LIMIT);
 
 function SectionHeading({
   title,
@@ -46,14 +39,24 @@ function SectionHeading({
 
 export default async function DashboardPage() {
   const userId = await getCurrentUserId();
-  const [recentCollections, collectionStats] = await Promise.all([
+  const [
+    recentCollections,
+    collectionStats,
+    pinnedItems,
+    recentItems,
+    itemStats,
+  ] = await Promise.all([
     getRecentCollections(userId, RECENT_COLLECTION_LIMIT),
     getCollectionStats(userId),
+    getPinnedItems(userId),
+    // No limit until the /items pages exist — this is the only full list.
+    getRecentItems(userId),
+    getItemStats(userId),
   ]);
 
   return (
     <div className="space-y-8">
-      <StatsCards collections={collectionStats} />
+      <StatsCards items={itemStats} collections={collectionStats} />
 
       <section className="space-y-4">
         <SectionHeading
@@ -79,16 +82,16 @@ export default async function DashboardPage() {
       <section className="space-y-4">
         <SectionHeading
           title="All Items"
-          subtitle={formatCount(MOCK_ITEMS.length, "item")}
+          subtitle={formatCount(itemStats.total, "item")}
         />
 
-        {PINNED_ITEMS.length > 0 && (
+        {pinnedItems.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs font-medium tracking-wider text-muted-foreground uppercase">
               Pinned
             </p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {PINNED_ITEMS.map((item) => (
+              {pinnedItems.map((item) => (
                 <ItemCard key={item.id} item={item} />
               ))}
             </div>
@@ -100,7 +103,7 @@ export default async function DashboardPage() {
             Recent
           </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {RECENT_ITEMS.map((item) => (
+            {recentItems.map((item) => (
               <ItemCard key={item.id} item={item} />
             ))}
           </div>

@@ -2,19 +2,19 @@ import { FolderHeart, Folders, Layers, Star } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import type { CollectionStats } from "@/lib/db/collections";
-import { MOCK_ITEMS } from "@/lib/mock-data";
+import type { ItemStats } from "@/lib/db/items";
 
-/**
- * Four totals across the top of the dashboard.
- *
- * Collection totals come from the database; item totals still count mock data
- * until the items section is wired up.
- */
-export function StatsCards({ collections }: { collections: CollectionStats }) {
+interface StatsCardsProps {
+  items: ItemStats;
+  collections: CollectionStats;
+}
+
+/** Four totals across the top of the dashboard. */
+export function StatsCards({ items, collections }: StatsCardsProps) {
   const stats = [
     {
       label: "Items",
-      value: MOCK_ITEMS.length,
+      value: items.total,
       icon: Layers,
     },
     {
@@ -24,7 +24,7 @@ export function StatsCards({ collections }: { collections: CollectionStats }) {
     },
     {
       label: "Favorite items",
-      value: MOCK_ITEMS.filter((item) => item.isFavorite).length,
+      value: items.favorites,
       icon: Star,
     },
     {

@@ -1,18 +1,32 @@
 # Current Feature
 
-<!-- Feature name and short description -->
+## Dashboard Items — real data from Neon
+
+Replace the mock item data in the dashboard's main area (pinned and recent
+items) with real data from Neon via Prisma, instead of `src/lib/mock-data.ts`.
+It should look the same as it does now.
 
 ## Status
-<!-- Not Started | In Progress | Completed -->
+In Progress
 
 ## Goals
-<!-- Goals and requirements -->
+- Create `src/lib/db/items.ts` with the item data-fetching functions
+- Fetch items directly in the dashboard server component
+- Item card icon and border color derived from the item's type
+- Show the item type tags and everything else the card displays now
+- Pinned section renders nothing when there are no pinned items
+- Update the stats display to use real item counts
 
 ## References
-<!-- Links to spec docs and related files -->
+- `context/features/dashboard-items-spec.md`
+- `context/screenshots/dashboard-ui-main.png`
+- `src/lib/mock-data.ts` — current source being replaced
+- `src/lib/db/collections.ts` — pattern to follow for owner-scoped queries
 
 ## Notes
-<!-- Any extra notes -->
+- Layout and design already exist; this is a data-source swap
+- Stats currently read collection totals from the database but item totals
+  from mock data — this closes that gap
 
 ## History
 <!-- Keep this updated. Earliest to latest -->
