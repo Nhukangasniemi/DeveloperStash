@@ -3,23 +3,28 @@ import { Star } from "lucide-react";
 
 import { TypeIcon } from "@/components/dashboard/TypeIcon";
 import { Card } from "@/components/ui/card";
-import { getTypeBreakdown } from "@/lib/collections";
+import type {
+  CollectionSummary,
+  CollectionTypeShare,
+} from "@/lib/db/collections";
 import { formatCount, formatRelativeTime } from "@/lib/format";
 import { getTypeLabel } from "@/lib/item-types";
-import type { Collection } from "@/lib/mock-data";
-import type { TypeShare } from "@/lib/collections";
 
 /** One type present in the collection, sized down to sit in a row. */
-function TypeShareIcon({ type, count }: TypeShare) {
+function TypeShareIcon({ type, count }: CollectionTypeShare) {
   const description = `${formatCount(count, "item")} · ${getTypeLabel(type.name)}`;
 
   return (
     <span
       title={description}
       className="flex size-6 items-center justify-center rounded-md"
-      style={{ backgroundColor: `${type.color}1f`, color: type.color }}
+      style={
+        type.color
+          ? { backgroundColor: `${type.color}1f`, color: type.color }
+          : undefined
+      }
     >
-      <TypeIcon iconName={type.icon} className="size-3.5" />
+      <TypeIcon iconName={type.icon ?? ""} className="size-3.5" />
       <span className="sr-only">{description}</span>
     </span>
   );
@@ -33,9 +38,12 @@ function TypeShareIcon({ type, count }: TypeShare) {
  * A collection with no items has neither — it renders untinted rather than
  * falling back to a default color.
  */
-export function CollectionCard({ collection }: { collection: Collection }) {
-  const breakdown = getTypeBreakdown(collection.id);
-  const accent = breakdown[0]?.type.color;
+export function CollectionCard({
+  collection,
+}: {
+  collection: CollectionSummary;
+}) {
+  const accent = collection.types[0]?.type.color;
 
   return (
     <Card className="group gap-0 overflow-hidden p-0 transition-colors hover:border-ring">
@@ -55,14 +63,16 @@ export function CollectionCard({ collection }: { collection: Collection }) {
           )}
         </div>
 
-        <p className="line-clamp-2 text-sm text-muted-foreground">
-          {collection.description}
-        </p>
+        {collection.description && (
+          <p className="line-clamp-2 text-sm text-muted-foreground">
+            {collection.description}
+          </p>
+        )}
 
         <div className="mt-auto space-y-3 pt-2">
-          {breakdown.length > 0 && (
+          {collection.types.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
-              {breakdown.map(({ type, count }) => (
+              {collection.types.map(({ type, count }) => (
                 <TypeShareIcon key={type.id} type={type} count={count} />
               ))}
             </div>

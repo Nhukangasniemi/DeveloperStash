@@ -2,7 +2,10 @@
 
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
-import { SidebarContent } from "@/components/dashboard/SidebarContent";
+import {
+  SidebarContent,
+  type SidebarCollection,
+} from "@/components/dashboard/SidebarContent";
 import { useSidebar } from "@/components/dashboard/SidebarProvider";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +23,11 @@ import { cn } from "@/lib/utils";
  * Desktop (md+): a rail that collapses from full width to icons only.
  * Mobile: always a slide-over drawer, opened from the top bar.
  */
-export function Sidebar() {
+export function Sidebar({
+  collections,
+}: {
+  collections: SidebarCollection[];
+}) {
   const { collapsed, toggleCollapsed, mobileOpen, setMobileOpen } =
     useSidebar();
 
@@ -46,6 +53,7 @@ export function Sidebar() {
           )}
         >
           <SidebarContent
+            collections={collections}
             collapsed={collapsed}
             headerAction={collapseToggle}
           />
@@ -61,7 +69,10 @@ export function Sidebar() {
           <SheetDescription className="sr-only">
             Browse item types and collections.
           </SheetDescription>
-          <SidebarContent onNavigate={() => setMobileOpen(false)} />
+          <SidebarContent
+            collections={collections}
+            onNavigate={() => setMobileOpen(false)}
+          />
         </SheetContent>
       </Sheet>
     </>

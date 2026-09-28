@@ -3,15 +3,19 @@ import Link from "next/link";
 import { CollectionCard } from "@/components/dashboard/CollectionCard";
 import { ItemCard } from "@/components/dashboard/ItemCard";
 import { StatsCards } from "@/components/dashboard/StatsCards";
+import {
+  getCollectionStats,
+  getRecentCollections,
+} from "@/lib/db/collections";
+import { getCurrentUserId } from "@/lib/db/users";
 import { formatCount } from "@/lib/format";
-import { MOCK_COLLECTIONS, MOCK_ITEMS } from "@/lib/mock-data";
+import { MOCK_ITEMS } from "@/lib/mock-data";
 
+const RECENT_COLLECTION_LIMIT = 6;
 const RECENT_ITEM_LIMIT = 10;
 
 const byRecency = <T extends { updatedAt: string }>(a: T, b: T) =>
   Date.parse(b.updatedAt) - Date.parse(a.updatedAt);
-
-const RECENT_COLLECTIONS = [...MOCK_COLLECTIONS].sort(byRecency);
 
 const PINNED_ITEMS = MOCK_ITEMS.filter((item) => item.isPinned).sort(byRecency);
 
@@ -40,15 +44,21 @@ function SectionHeading({
   );
 }
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const userId = await getCurrentUserId();
+  const [recentCollections, collectionStats] = await Promise.all([
+    getRecentCollections(userId, RECENT_COLLECTION_LIMIT),
+    getCollectionStats(userId),
+  ]);
+
   return (
     <div className="space-y-8">
-      <StatsCards />
+      <StatsCards collections={collectionStats} />
 
       <section className="space-y-4">
         <SectionHeading
           title="Collections"
-          subtitle={formatCount(RECENT_COLLECTIONS.length, "collection")}
+          subtitle={formatCount(collectionStats.total, "collection")}
           action={
             <Link
               href="/collections"
@@ -60,7 +70,7 @@ export default function DashboardPage() {
         />
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {RECENT_COLLECTIONS.map((collection) => (
+          {recentCollections.map((collection) => (
             <CollectionCard key={collection.id} collection={collection} />
           ))}
         </div>

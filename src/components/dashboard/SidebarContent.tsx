@@ -20,8 +20,8 @@ import {
   getTypeLabel,
   isProType,
 } from "@/lib/item-types";
+import type { CollectionSummary } from "@/lib/db/collections";
 import {
-  MOCK_COLLECTIONS,
   MOCK_ITEM_TYPES,
   MOCK_USER,
   mockItemTypeCounts,
@@ -37,14 +37,11 @@ const TOTAL_ITEMS = Object.values(mockItemTypeCounts).reduce(
   0,
 );
 
-/** Most recently updated first, matching the dashboard's collection grid. */
-const COLLECTIONS_BY_RECENCY = [...MOCK_COLLECTIONS].sort(
-  (a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt),
-);
-
-const FAVORITE_COLLECTIONS = COLLECTIONS_BY_RECENCY.filter(
-  (collection) => collection.isFavorite,
-);
+/** What the sidebar needs of a collection; the full summary stays on the server. */
+export type SidebarCollection = Pick<
+  CollectionSummary,
+  "id" | "name" | "isFavorite" | "itemCount"
+>;
 
 interface SidebarLinkProps {
   href: string;
@@ -162,6 +159,8 @@ function GroupLabel({ children }: { children: React.ReactNode }) {
 }
 
 interface SidebarContentProps {
+  /** Most recently updated first, matching the dashboard's collection grid. */
+  collections: SidebarCollection[];
   /** Icon-only rail. Desktop only — the mobile drawer is always expanded. */
   collapsed?: boolean;
   /** Closes the mobile drawer once a link is followed. */
@@ -178,12 +177,17 @@ interface SidebarContentProps {
  * so the two can't drift apart.
  */
 export function SidebarContent({
+  collections,
   collapsed = false,
   onNavigate,
   headerAction,
 }: SidebarContentProps) {
   const [typesOpen, setTypesOpen] = useState(true);
   const [collectionsOpen, setCollectionsOpen] = useState(true);
+
+  const favoriteCollections = collections.filter(
+    (collection) => collection.isFavorite,
+  );
 
   const initials = MOCK_USER.name
     .split(" ")
@@ -281,7 +285,7 @@ export function SidebarContent({
           {(collapsed || collectionsOpen) && (
             <div className="space-y-0.5">
               {!collapsed && <GroupLabel>Favorites</GroupLabel>}
-              {FAVORITE_COLLECTIONS.map((collection) => (
+              {favoriteCollections.map((collection) => (
                 <SidebarLink
                   key={`favorite-${collection.id}`}
                   href={`/collections/${collection.id}`}
@@ -297,7 +301,7 @@ export function SidebarContent({
               {!collapsed && (
                 <>
                   <GroupLabel>All collections</GroupLabel>
-                  {COLLECTIONS_BY_RECENCY.map((collection) => (
+                  {collections.map((collection) => (
                     <SidebarLink
                       key={collection.id}
                       href={`/collections/${collection.id}`}

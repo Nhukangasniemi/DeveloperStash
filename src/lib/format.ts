@@ -1,5 +1,3 @@
-import { MOCK_NOW } from "@/lib/mock-data";
-
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
@@ -8,12 +6,12 @@ const WEEK = 7 * DAY;
 /**
  * "2h ago", "3d ago", "1w ago".
  *
- * Measured from MOCK_NOW rather than the real clock, so the mock timestamps
- * read the same on the server and the client — a real `Date.now()` here would
- * produce a hydration mismatch.
+ * Measured from the real clock, so only call this from server components — on
+ * the client it would render a different string than the server did and cause
+ * a hydration mismatch.
  */
-export function formatRelativeTime(isoDate: string): string {
-  const elapsed = Date.parse(MOCK_NOW) - Date.parse(isoDate);
+export function formatRelativeTime(date: Date | string): string {
+  const elapsed = Date.now() - new Date(date).getTime();
 
   if (elapsed < HOUR) return `${Math.max(1, Math.floor(elapsed / MINUTE))}m ago`;
   if (elapsed < DAY) return `${Math.floor(elapsed / HOUR)}h ago`;

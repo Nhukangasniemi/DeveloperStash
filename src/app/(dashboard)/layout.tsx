@@ -1,14 +1,27 @@
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { SidebarProvider } from "@/components/dashboard/SidebarProvider";
 import { TopBar } from "@/components/dashboard/TopBar";
+import { getRecentCollections } from "@/lib/db/collections";
+import { getCurrentUserId } from "@/lib/db/users";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: LayoutProps<"/">) {
+  const collections = await getRecentCollections(await getCurrentUserId());
+
   return (
     <SidebarProvider>
       <div className="flex h-dvh">
-        <Sidebar />
+        <Sidebar
+          collections={collections.map(
+            ({ id, name, isFavorite, itemCount }) => ({
+              id,
+              name,
+              isFavorite,
+              itemCount,
+            }),
+          )}
+        />
 
         <div className="flex min-w-0 flex-1 flex-col">
           <TopBar />
