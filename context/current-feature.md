@@ -85,3 +85,86 @@
   - Built on branch `feat/dashboard-phase-3`
   - Known gap: stats count real mock records, but each collection card shows
     `itemCount` (its claimed total), which is larger than the join rows
+
+- **2026-09-24**: Frontend state management decided (docs only)
+  - `context/state-management.md` added — four buckets, one mechanism each:
+    server data (RSC + Prisma, writes via Server Actions + `revalidatePath`),
+    URL state (`searchParams`), ephemeral UI (`useState` / narrow context),
+    pending & optimistic (`useOptimistic` + `useActionState`)
+  - No global client store; no client-side data cache at MVP
+  - Item drawer will be URL-driven (`?item=<id>`), not provider state, so it is
+    deep-linkable and closes with the back button
+  - Server Actions are the only write path to Postgres; API routes stay limited
+    to webhooks, uploads, long-running work and external clients
+  - TanStack Query deliberately deferred — RSC already covers fetch/cache/dedupe,
+    and a second cache would need invalidating alongside `revalidatePath` on
+    every mutation. Scoped for later use in ⌘K search, infinite item lists and
+    Pro AI calls only, with adoption rules written down
+  - `project-overview.md` §6 gained a note that the architecture diagram's
+    all-through-`/app/api/*` paths are not the default, and §10 a guardrail bullet
+  - Built on branch `docs/state-management`
+
+- **2026-09-24**: Database foundation — Neon Postgres + Prisma 7 (completed)
+  - Neon serverless Postgres wired up; dev branch only, production branch still
+    to be created
+  - Prisma pinned to **7.10.0** — npm's `latest` tag on the `prisma` CLI points
+    at `8.0.0-rc.15`, while `@prisma/client`'s points at `7.10.0`, so an
+    unpinned install mismatches majors. Both packages pinned with `--save-exact`
+  - Prisma 7 breaking changes handled: `prisma.config.ts` replaces the
+    datasource URL in the schema, env files are no longer auto-loaded (hence
+    `import "dotenv/config"`), `output` is required on the generator, and a
+    driver adapter is mandatory. The documented claim that v7 is ESM-only is
+    wrong — the installed packages are dual CJS/ESM, so `"type": "module"` was
+    *not* added
+  - `@prisma/adapter-neon` over `@neondatabase/serverless`, using `PrismaNeon`
+    (WebSocket pool) rather than `PrismaNeonHttp`, which cannot do interactive
+    transactions
+  - Two connection strings, not interchangeable: pooled `DATABASE_URL` for the
+    app, unpooled `DIRECT_URL` for the CLI — migrations take advisory locks and
+    cannot run through a transaction pooler. Note v7's `Datasource` type has no
+    `directUrl` field, so the split lives in two separate files
+  - `prisma/schema.prisma` — `User`, `Account`, `Session`, `VerificationToken`,
+    `ItemType`, `Item`, `Collection`, `ItemCollection`, `Tag`, `ItemTag`, plus a
+    `ContentType` enum
+  - `ItemCollection` join replaces the draft's single `Item.collectionId`, since
+    §3.2 needs an item in several collections; mirrors `MOCK_ITEM_COLLECTIONS`
+  - `contentType` is a real Postgres enum (`TEXT` / `URL` / `FILE`) rather than
+    a string, matching the union the dashboard already uses
+  - Cascade deletes run from `User` down through every owned row and both join
+    tables; `Item.type` is `onDelete: Restrict` so deleting a type can never
+    silently delete a user's items
+  - Indexes on every FK plus the dashboard's real access paths —
+    `(userId, updatedAt DESC)`, `(userId, isPinned)`, `(userId, isFavorite)`
+  - Database naming is `snake_case` with plural tables via `@map` / `@@map`;
+    Postgres folds unquoted identifiers to lowercase, so the original
+    PascalCase would have forced `"ItemType"` quoting forever in raw SQL
+  - Primary keys are UUIDv7 in native `uuid` columns
+    (`@default(uuid(7)) @db.Uuid`), not cuids in `text` — time-ordered so
+    inserts append to the index edge instead of scattering, and 16 bytes
+    against 36. All 16 FK fields need `@db.Uuid` too or Postgres rejects the
+    foreign key. Verified live: ids are version 7 and sort in insertion order
+  - `src/lib/prisma.ts` — singleton cached on `globalThis` outside production so
+    dev hot reloads do not exhaust Neon's connection limit
+  - `prisma/seed.ts` — the seven system `ItemType` rows, idempotent via upsert
+    on fixed ids. `@@unique([userId, name])` cannot guard them because Postgres
+    treats NULL `userId`s as distinct. Ids are a reserved UUID block
+    (`00000000-0000-7000-8000-00000000000N`), since a `uuid` column rejects
+    readable strings like `type_snippet`
+  - Single migration `20260924095857_init`; the schema was iterated by
+    regenerating init rather than stacking rename migrations, as nothing had
+    been merged or deployed
+  - Generated client goes to `src/generated/prisma` (gitignored, rebuilt by
+    `postinstall` and `build`); `src/generated/**` ignored by eslint
+  - npm scripts added: `db:generate`, `db:migrate`, `db:deploy`, `db:status`,
+    `db:seed`, `db:studio`
+  - `.env.example` committed via a `!.env.example` gitignore exception
+  - Gotcha worth remembering: `prisma migrate dev` does **not** regenerate the
+    client in v7, so a stale client fails with `TableDoesNotExist`. Run
+    `npm run db:generate` after every schema change
+  - `project-overview.md` §4 rewritten — ERD updated, and the duplicated draft
+    schema replaced by a pointer to `schema.prisma` plus the decisions behind
+    it; §5 and §10 updated. `coding-standards.md` gained a database naming
+    section
+  - Not done yet: no production Neon branch, no auth (every domain row needs a
+    `userId`), and the dashboard still renders `src/lib/mock-data.ts` — whose
+    readable type ids no longer match the seeded UUIDs

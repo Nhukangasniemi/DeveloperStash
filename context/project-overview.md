@@ -2,7 +2,7 @@
 
 > One fast, searchable, AI-enhanced hub for all your dev knowledge & resources.
 
-**Status:** Planning / pre-MVP · **Last updated:** 2026-09-21
+**Status:** Planning / pre-MVP · **Last updated:** 2026-09-24
 
 ## Table of Contents
 
@@ -121,158 +121,132 @@ erDiagram
     USER ||--o{ COLLECTION : owns
     USER ||--o{ ITEM_TYPE : "custom types"
     USER ||--o{ TAG : owns
+    USER ||--o{ ACCOUNT : "oauth"
+    USER ||--o{ SESSION : "sessions"
 
     ITEM_TYPE ||--o{ ITEM : categorizes
-    COLLECTION ||--o{ ITEM : contains
+    ITEM ||--o{ ITEM_COLLECTION : "linked via"
+    COLLECTION ||--o{ ITEM_COLLECTION : "linked via"
     ITEM ||--o{ ITEM_TAG : "linked via"
     TAG ||--o{ ITEM_TAG : "linked via"
 
     USER {
-        string id PK
-        string email
-        string password
+        uuid id PK
+        string name
+        string email UK
+        datetime emailVerified
+        string image
+        string password "hashed; null for OAuth-only"
         boolean isPro
-        string stripeCustomerId
-        string stripeSubscriptionId
+        string stripeCustomerId UK
+        string stripeSubscriptionId UK
+    }
+    ACCOUNT {
+        uuid id PK
+        uuid userId FK
+        string provider
+        string providerAccountId
+    }
+    SESSION {
+        uuid id PK
+        string sessionToken UK
+        uuid userId FK
+        datetime expires
+    }
+    VERIFICATION_TOKEN {
+        string identifier PK
+        string token PK
+        datetime expires
     }
     ITEM {
-        string id PK
+        uuid id PK
         string title
-        string contentType
-        string content
-        string fileUrl
+        enum contentType "TEXT, URL or FILE"
+        string content "TEXT items"
+        string url "URL items"
+        string fileUrl "FILE items"
         string fileName
         int fileSize
-        string url
         string description
         boolean isFavorite
         boolean isPinned
         string language
-        string userId FK
-        string typeId FK
-        string collectionId FK
+        uuid userId FK
+        uuid typeId FK
     }
     ITEM_TYPE {
-        string id PK
+        uuid id PK
         string name
         string icon
         string color
         boolean isSystem
-        string userId FK
+        uuid userId FK "null for system types"
     }
     COLLECTION {
-        string id PK
+        uuid id PK
         string name
         string description
         boolean isFavorite
-        string userId FK
+        uuid userId FK
+    }
+    ITEM_COLLECTION {
+        uuid itemId FK
+        uuid collectionId FK
+        datetime addedAt
     }
     ITEM_TAG {
-        string itemId FK
-        string tagId FK
+        uuid itemId FK
+        uuid tagId FK
     }
     TAG {
-        string id PK
+        uuid id PK
         string name
-        string userId FK
+        uuid userId FK
     }
 ```
 
-### 4.2 Prisma Schema (draft)
+### 4.2 Prisma Schema
 
-Not final — a starting point to formalize into real migrations. Auth models follow the standard [Auth.js Prisma adapter](https://authjs.dev/getting-started/adapters/prisma) shape so `@auth/prisma-adapter` can be dropped in as-is.
+**`prisma/schema.prisma` is the source of truth.** It is no longer reproduced here — a second copy only drifts. This section records the decisions behind it that the schema file alone does not explain.
 
-```prisma
-model User {
-  id                   String   @id @default(cuid())
-  email                String   @unique
-  password             String?
-  isPro                Boolean  @default(false)
-  stripeCustomerId     String?
-  stripeSubscriptionId String?
-  items                Item[]
-  itemTypes            ItemType[]
-  collections          Collection[]
-  tags                 Tag[]
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-}
+Auth models follow the standard [Auth.js Prisma adapter](https://authjs.dev/getting-started/adapters/prisma) shape, so `@auth/prisma-adapter` drops in as-is.
 
-model Item {
-  id          String   @id @default(cuid())
-  title       String
-  contentType String   // text | file
-  content     String?  // used for text types
-  fileUrl     String?
-  fileName    String?
-  fileSize    Int?
-  url         String?
-  description String?
-  isFavorite  Boolean  @default(false)
-  isPinned    Boolean  @default(false)
-  language    String?
+| Model | Notes |
+|---|---|
+| `User` | Auth.js fields (`name`, `emailVerified`, `image`) plus billing (`isPro`, Stripe ids) |
+| `Account` / `Session` / `VerificationToken` | Auth.js adapter models; untouched from the reference shape |
+| `Item` | One row per saved thing; payload field depends on `contentType` |
+| `ItemType` | System types have `userId = null`; user-defined types (Pro) are owner-scoped |
+| `Collection` | Owner-scoped, unique name per user |
+| `ItemCollection` | Join: item ↔ collection many-to-many, carries `addedAt` |
+| `Tag` / `ItemTag` | Owner-scoped tags, joined to items |
 
-  userId      String
-  user        User @relation(fields: [userId], references: [id])
+#### Naming
 
-  typeId      String
-  type        ItemType @relation(fields: [typeId], references: [id])
+The database uses **`snake_case`**, plural tables: `users`, `items`, `item_types`, `item_collections`, `verification_tokens`, and columns like `created_at`, `user_id`, `is_favorite`. The `ContentType` enum is the `content_type` type.
 
-  collectionId String?
-  collection   Collection? @relation(fields: [collectionId], references: [id])
+Prisma models and fields stay PascalCase/camelCase for the TypeScript client; `@map` / `@@map` bridge the two. This is not cosmetic: Postgres folds unquoted identifiers to lowercase, so a table created as `"ItemType"` can only ever be reached as `"ItemType"` with quotes — in psql, in raw SQL, in every BI or migration tool. snake_case keeps `select * from item_types` working unquoted.
 
-  tags        ItemTag[]
+#### Decisions that differ from the original draft
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
+- **`ItemCollection` join table replaces `Item.collectionId`.** [§3.2](#32-collections) requires an item to live in several collections at once, which a single FK cannot express. The join mirrors `MOCK_ITEM_COLLECTIONS` from the dashboard mock data.
+- **`contentType` is a Postgres enum** (`TEXT` / `URL` / `FILE`), not a free-text string — it matches the `ContentType` union the dashboard already uses, so invalid values are rejected by the database rather than by convention.
+- **`Item.type` uses `onDelete: Restrict`.** Every other relation cascades from its owner, but deleting an item type must not silently delete the user's items.
+- **Cascade deletes** run from `User` down through items, collections, types, tags and both join tables, so removing an account leaves nothing orphaned.
+- **Indexes** cover every foreign key plus the dashboard's real access paths — `(userId, updatedAt DESC)` for recent lists, and `(userId, isPinned)` / `(userId, isFavorite)` for the pinned and favourite sections.
+- **Primary keys are UUIDv7 in native `uuid` columns** (`@default(uuid(7)) @db.Uuid`), not cuids in `text`. v7 is time-ordered, so inserts append to the right edge of the index rather than scattering across it and splitting pages; the native type stores 16 bytes against 36 for a text cuid, which keeps every index and foreign key smaller. Every FK column is `@db.Uuid` too — Postgres rejects a foreign key whose type does not match its target. The tradeoff accepted: a v7 id embeds its creation timestamp, so anyone holding one can infer when the row was made.
+- **System `ItemType` ids are fixed UUIDs** from a reserved block (`00000000-0000-7000-8000-00000000000N`), seeded via `prisma/seed.ts`. `@@unique([userId, name])` cannot guard them because Postgres treats NULL `userId`s as distinct, so the seed upserts by id to stay idempotent. They are deliberately recognisable as synthetic.
 
-model ItemType {
-  id       String   @id @default(cuid())
-  name     String
-  icon     String?
-  color    String?
-  isSystem Boolean  @default(false)
+#### Connections
 
-  userId   String?
-  user     User? @relation(fields: [userId], references: [id])
+Two Neon connection strings from the same branch, and they are not interchangeable:
 
-  items    Item[]
-}
+| Var | Pooled? | Used by |
+|---|---|---|
+| `DATABASE_URL` | yes (`-pooler` host) | the app, via `@prisma/adapter-neon` in `src/lib/prisma.ts` |
+| `DIRECT_URL` | no | the Prisma CLI, via `prisma.config.ts` |
 
-model Collection {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  isFavorite  Boolean  @default(false)
-
-  userId      String
-  user        User @relation(fields: [userId], references: [id])
-
-  items       Item[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-model Tag {
-  id     String @id @default(cuid())
-  name   String
-  userId String
-  user   User @relation(fields: [userId], references: [id])
-
-  items  ItemTag[]
-}
-
-model ItemTag {
-  itemId String
-  tagId  String
-
-  item Item @relation(fields: [itemId], references: [id])
-  tag  Tag  @relation(fields: [tagId], references: [id])
-
-  @@id([itemId, tagId])
-}
-```
+Migrations hold advisory locks and need long-lived sessions, which a transaction pooler cannot provide. See `.env.example`.
 
 ## 5. Tech Stack
 
@@ -281,7 +255,7 @@ model ItemTag {
 | Framework | [Next.js 16](https://nextjs.org/docs) / [React 19](https://react.dev) | App Router, SSR pages with dynamic components; API routes for backend needs (items, file uploads, AI calls). Single codebase/repo. |
 | Language | TypeScript | End-to-end type safety |
 | Database | [Neon](https://neon.tech/docs) (serverless Postgres) | Cloud-hosted Postgres |
-| ORM | [Prisma 7](https://www.prisma.io/docs) | ⚠️ Always via migrations — see [§10](#10-engineering-guardrails) |
+| ORM | [Prisma 7](https://www.prisma.io/docs) (pinned `7.10.0`) | Config in `prisma.config.ts`; client generated to `src/generated/prisma`; connects via the `@prisma/adapter-neon` driver adapter. ⚠️ Always via migrations — see [§10](#10-engineering-guardrails) |
 | Caching | Redis | Maybe, TBD |
 | File storage | [Cloudflare R2](https://developers.cloudflare.com/r2/) | Uploads for `file` / `image` items |
 | Auth | [Auth.js / NextAuth v5](https://authjs.dev) | Email/password + GitHub OAuth |
@@ -365,4 +339,8 @@ See the table in [§3.1](#31-items--item-types) — reused consistently across s
 ## 10. Engineering Guardrails
 
 - **Never** use `prisma db push` or hand-edit the database schema directly. All schema changes go through **Prisma Migrate**, run in dev first, then promoted to prod.
-- Data model above is a draft — expect it to shift as features are implemented; keep this doc in sync with the real `schema.prisma`.
+- `prisma/schema.prisma` is the source of truth for the data model. Expect it to shift as features are implemented; when it does, update [§4](#4-data-model) — the ERD and the decision notes, which are the parts this doc still owns.
+- The Prisma CLI must use `DIRECT_URL` (unpooled) and the app must use `DATABASE_URL` (pooled). Migrations take advisory locks and cannot run through Neon's pooler.
+- Database identifiers are `snake_case` (plural tables). New models and fields need `@map` / `@@map` — see [§4.2](#42-prisma-schema).
+- `prisma migrate dev` does **not** regenerate the client in Prisma 7. Run `npm run db:generate` after a schema change, or you will hit `TableDoesNotExist` against a stale client.
+- Pin `prisma` and `@prisma/client` to the same **GA** version and upgrade them together. npm's `latest` tag on `prisma` has pointed at a release candidate — check `npm view prisma dist-tags` rather than trusting `@latest`.

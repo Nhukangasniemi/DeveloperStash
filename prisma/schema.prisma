@@ -1,0 +1,245 @@
+// DevStash database schema.
+//
+// Prisma 7: the datasource URL lives in `prisma.config.ts`, not here, and the
+// client is generated into `src/generated/prisma` rather than node_modules.
+//
+// Naming: models and fields are PascalCase/camelCase for the TypeScript
+// client, and `@map` / `@@map` give the database snake_case tables and
+// columns. Unquoted identifiers get folded to lowercase by Postgres, so
+// snake_case is what keeps raw SQL, psql and BI tools free of quoting.
+//
+// Primary keys are UUIDv7 in native `uuid` columns. v7 is time-ordered, so
+// inserts append to the right edge of the index instead of scattering; the
+// native type stores 16 bytes rather than the 36 a text cuid would take.
+//
+// Keep `context/project-overview.md` §4 in sync with this file.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Auth (Auth.js / NextAuth v5 — @auth/prisma-adapter shape)
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(uuid(7)) @db.Uuid
+  name          String?
+  email         String    @unique
+  emailVerified DateTime? @map("email_verified")
+  image         String?
+  /// Null for OAuth-only users; hashed, never plaintext.
+  password      String?
+
+  isPro                Boolean @default(false) @map("is_pro")
+  stripeCustomerId     String? @unique @map("stripe_customer_id")
+  stripeSubscriptionId String? @unique @map("stripe_subscription_id")
+
+  accounts    Account[]
+  sessions    Session[]
+  items       Item[]
+  itemTypes   ItemType[]
+  collections Collection[]
+  tags        Tag[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(uuid(7)) @db.Uuid
+  userId            String  @map("user_id") @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @map("refresh_token") @db.Text
+  access_token      String? @map("access_token") @db.Text
+  expires_at        Int?    @map("expires_at")
+  token_type        String? @map("token_type")
+  scope             String?
+  id_token          String? @map("id_token") @db.Text
+  session_state     String? @map("session_state")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id") @db.Uuid
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Domain
+// ---------------------------------------------------------------------------
+
+/// How to read an item's payload: prose/code, a URL, or a stored file.
+enum ContentType {
+  TEXT
+  URL
+  FILE
+
+  @@map("content_type")
+}
+
+/// A category of item. System types ship with the app and have no owner;
+/// user-defined types (Pro, later) are scoped to their creator.
+model ItemType {
+  id       String  @id @default(uuid(7)) @db.Uuid
+  name     String
+  /// lucide-react icon name, e.g. "Code"
+  icon     String?
+  /// hex, e.g. "#3b82f6"
+  color    String?
+  isSystem Boolean @default(false) @map("is_system")
+
+  /// Null for system types.
+  userId String? @map("user_id") @db.Uuid
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  items Item[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Postgres treats NULLs as distinct, so this does not constrain system
+  // types; the seed keeps those unique by using fixed ids with upsert.
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("item_types")
+}
+
+model Item {
+  id          String      @id @default(uuid(7)) @db.Uuid
+  title       String
+  contentType ContentType @default(TEXT) @map("content_type")
+  /// Body for TEXT items.
+  content     String?     @db.Text
+  /// Target for URL items.
+  url         String?
+  /// R2 object URL plus metadata for FILE items.
+  fileUrl     String?     @map("file_url")
+  fileName    String?     @map("file_name")
+  fileSize    Int?        @map("file_size")
+  description String?     @db.Text
+  isFavorite  Boolean     @default(false) @map("is_favorite")
+  isPinned    Boolean     @default(false) @map("is_pinned")
+  /// Syntax highlighting hint; null when the content is not code.
+  language    String?
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  typeId String   @map("type_id") @db.Uuid
+  // Restrict, not Cascade: deleting a type must not silently delete items.
+  type   ItemType @relation(fields: [typeId], references: [id], onDelete: Restrict)
+
+  collections ItemCollection[]
+  tags        ItemTag[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId, updatedAt(sort: Desc)])
+  @@index([userId, typeId])
+  @@index([userId, isPinned])
+  @@index([userId, isFavorite])
+  @@index([typeId])
+  @@map("items")
+}
+
+model Collection {
+  id          String  @id @default(uuid(7)) @db.Uuid
+  name        String
+  description String?
+  isFavorite  Boolean @default(false) @map("is_favorite")
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  items ItemCollection[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, name])
+  @@index([userId, updatedAt(sort: Desc)])
+  @@map("collections")
+}
+
+/// Join between items and collections: an item can sit in many collections,
+/// and a collection holds items of any type.
+model ItemCollection {
+  itemId       String   @map("item_id") @db.Uuid
+  collectionId String   @map("collection_id") @db.Uuid
+  addedAt      DateTime @default(now()) @map("added_at")
+
+  item       Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@id([itemId, collectionId])
+  @@index([collectionId])
+  @@index([itemId])
+  @@map("item_collections")
+}
+
+model Tag {
+  id   String @id @default(uuid(7)) @db.Uuid
+  name String
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  items ItemTag[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("tags")
+}
+
+model ItemTag {
+  itemId String @map("item_id") @db.Uuid
+  tagId  String @map("tag_id") @db.Uuid
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([itemId, tagId])
+  @@index([tagId])
+  @@index([itemId])
+  @@map("item_tags")
+}

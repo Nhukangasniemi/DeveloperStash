@@ -75,8 +75,17 @@ Example v4 configuration:
 
 - Use Prisma ORM for all database operations
 - Always use `prisma migrate dev` for schema changes (not `db push`)
+- Run `npm run db:generate` after any schema change — Prisma 7's `migrate dev` does not regenerate the client, and a stale client fails with `TableDoesNotExist`
 - Run `prisma migrate status` before committing to verify migrations are in sync
 - Production deployments must run `prisma migrate deploy` before the app starts
+
+### Database naming
+
+- Tables and columns are `snake_case`; tables are plural (`item_types`)
+- Primary keys are UUIDv7 in native uuid columns: `@id @default(uuid(7)) @db.Uuid`
+- Foreign key fields need `@db.Uuid` as well — Postgres rejects an FK whose column type differs from its target
+- Prisma models stay PascalCase and fields camelCase — bridge them with `@map` on fields and `@@map` on models and enums
+- Every new model and every multi-word field needs a mapping; Postgres lowercases unquoted identifiers, so an unmapped `createdAt` forces `"createdAt"` quoting forever in raw SQL
 
 ## Data Fetching
 
