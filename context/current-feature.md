@@ -1,18 +1,55 @@
 # Current Feature
 
-<!-- Feature name and short description -->
+**Database Foundation — Neon PostgreSQL + Prisma 7**
+
+Replace the mock data layer's backing store with a real serverless Postgres
+database on Neon, accessed through Prisma 7, including the auth models NextAuth
+v5 needs.
 
 ## Status
-<!-- Not Started | In Progress | Completed -->
+
+In Progress
 
 ## Goals
-<!-- Goals and requirements -->
+
+- Provision Neon PostgreSQL (serverless), with a development branch behind
+  `DATABASE_URL` and a separate production branch
+- Install and configure Prisma 7 — note the breaking changes from v6 (new
+  config file, generated client output, driver adapters); read the upgrade
+  guide before writing any setup code
+- Write the initial `schema.prisma` from the data models in
+  `project-overview.md`: `User`, `Item`, `ItemType`, `Collection`, `Tag`,
+  `ItemTag`
+- Model item ↔ collection as a real many-to-many (`ItemCollection` join),
+  matching `MOCK_ITEM_COLLECTIONS` from phase 3 rather than the single
+  `collectionId` in the draft schema
+- Add the NextAuth v5 / `@auth/prisma-adapter` models: `Account`, `Session`,
+  `VerificationToken`
+- Add indexes on foreign keys and common query paths, and cascade deletes so
+  removing a user or an item cleans up its rows
+- Create a singleton Prisma client in `src/lib/` that survives dev hot reloads
+- Everything through `prisma migrate dev` — never `prisma db push`, never
+  hand-edited SQL against the database
 
 ## References
-<!-- Links to spec docs and related files -->
+
+- Spec: `context/features/database-spec.md`
+- Data models: `context/project-overview.md` §4
+- Database standards: `context/coding-standards.md`
+- Prisma 7 upgrade guide:
+  https://www.prisma.io/docs/orm/more/upgrade-guides/upgrading-versions/upgrading-to-prisma-7
+- Prisma quickstart:
+  https://www.prisma.io/docs/getting-started/prisma-orm/quickstart/prisma-postgres
 
 ## Notes
-<!-- Any extra notes -->
+
+- The schema is expected to evolve; keep `project-overview.md` §4 in sync with
+  the real `schema.prisma` as it changes.
+- Mock data in `src/lib/mock-data.ts` stays in place for now — swapping the
+  dashboard over to real queries is a separate step, not part of this feature.
+- Seeding the system `ItemType` rows (snippet, prompt, command, note, link,
+  file, image) is needed before any item can be created, since `isSystem` types
+  have no `userId`.
 
 ## History
 <!-- Keep this updated. Earliest to latest -->
@@ -85,3 +122,21 @@
   - Built on branch `feat/dashboard-phase-3`
   - Known gap: stats count real mock records, but each collection card shows
     `itemCount` (its claimed total), which is larger than the join rows
+
+- **2026-09-24**: Frontend state management decided (docs only)
+  - `context/state-management.md` added — four buckets, one mechanism each:
+    server data (RSC + Prisma, writes via Server Actions + `revalidatePath`),
+    URL state (`searchParams`), ephemeral UI (`useState` / narrow context),
+    pending & optimistic (`useOptimistic` + `useActionState`)
+  - No global client store; no client-side data cache at MVP
+  - Item drawer will be URL-driven (`?item=<id>`), not provider state, so it is
+    deep-linkable and closes with the back button
+  - Server Actions are the only write path to Postgres; API routes stay limited
+    to webhooks, uploads, long-running work and external clients
+  - TanStack Query deliberately deferred — RSC already covers fetch/cache/dedupe,
+    and a second cache would need invalidating alongside `revalidatePath` on
+    every mutation. Scoped for later use in ⌘K search, infinite item lists and
+    Pro AI calls only, with adoption rules written down
+  - `project-overview.md` §6 gained a note that the architecture diagram's
+    all-through-`/app/api/*` paths are not the default, and §10 a guardrail bullet
+  - Built on branch `docs/state-management`
