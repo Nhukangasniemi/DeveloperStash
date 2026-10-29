@@ -37,6 +37,8 @@ export interface CollectionStats {
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const SIDEBAR_RECENT_LIMIT = 5;
+
 const SUMMARY_SELECT = {
   id: true,
   name: true,
@@ -108,6 +110,34 @@ export async function getRecentCollections(
   });
 
   return rows.map(toSummary);
+}
+
+/**
+ * What the sidebar lists: the most recent collections plus every favourite,
+ * most recently updated first. Two bounded reads instead of loading every
+ * collection and its join rows.
+ */
+export async function getSidebarCollections(
+  userId: string,
+): Promise<CollectionSummary[]> {
+  const [recent, favorites] = await Promise.all([
+    getRecentCollections(userId, SIDEBAR_RECENT_LIMIT),
+    prisma.collection
+      .findMany({
+        where: { userId, isFavorite: true },
+        orderBy: { updatedAt: "desc" },
+        select: SUMMARY_SELECT,
+      })
+      .then((rows) => rows.map(toSummary)),
+  ]);
+
+  const byId = new Map(
+    [...recent, ...favorites].map((collection) => [collection.id, collection]),
+  );
+
+  return [...byId.values()].sort(
+    (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),
+  );
 }
 
 export async function getCollectionStats(
