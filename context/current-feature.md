@@ -1,34 +1,18 @@
 # Current Feature
 
-Query performance — slim the sidebar collections query and bound dashboard item previews
-
-Fixes medium findings 1 and 2 from the code-scanner report.
+<!-- Feature name and short description -->
 
 ## Status
-In Progress
+<!-- Not Started | In Progress | Completed -->
 
 ## Goals
-- **Sidebar collections query** — the dashboard layout calls `getRecentCollections(user.id)` with no limit, and `SUMMARY_SELECT` pulls every `ItemCollection` row for every collection on each dashboard navigation, to render five sidebar links
-  - Add a sidebar-specific query in `src/lib/db/collections.ts` that returns only what the sidebar uses: favorites, the 5 most recent collections, `itemCount` and the dominant type color
-  - Use `take: 5` and `_count` for the count; fetch item types only for the rows shown (or a `groupBy` on `ItemCollection`)
-  - `/collections` and `CollectionCard` keep using the full summary
-  - Dominant type must stay the same as today, ties still going to the most recently added type
-- ~~**Dashboard recent items**~~ — deferred, `src/lib/db/items.ts` is left unchanged. `getRecentItems` is unbounded and selects the full `content` of every item, while `ItemCard` shows about 6 lines
-  - Truncating needs raw SQL (`left(content, 500)`), which hardcodes table and column names and bypasses schema type checking; the schema can change at any point, so this was tried and reverted
-  - Revisit with a Prisma-only approach (e.g. a limit once a full `/items` list exists)
-- No visible change to the sidebar or dashboard
+<!-- Goals and requirements -->
 
 ## References
-- `src/app/(dashboard)/layout.tsx:12-15`
-- `src/lib/db/collections.ts` — `SUMMARY_SELECT` (40-56), `getRecentCollections` (99-111)
-- `src/lib/db/items.ts` — `SUMMARY_SELECT` (45-62), `getRecentItems` and `getPreview` (107-119)
-- `src/app/(dashboard)/dashboard/page.tsx:52-53`
-- `src/components/dashboard/ItemCard.tsx` — preview rendering (`max-h-24`)
+<!-- Links to spec docs and related files -->
 
 ## Notes
-- Postgres cannot truncate through Prisma's `select`; the only ways are raw SQL (rejected, see Goals) or slicing after the fetch, which still transfers the full body
-- The missing limit on recent items is deliberate (see the dashboard items history entry); only the `content` over-fetch is new
-- Verify against the seed: 18 items, 5 collections, sidebar and dashboard render unchanged
+<!-- Any extra notes -->
 
 ## History
 <!-- Keep this updated. Earliest to latest -->
@@ -298,3 +282,21 @@ In Progress
   - Still the seeded demo user until auth lands. `MOCK_USER` is now unused but
     left in `mock-data.ts`
   - Built on branch `feature/sidebar-user`
+
+- **2026-10-29**: Query performance — sidebar collections (completed)
+  - From the code-scanner's medium findings 1 and 2; only finding 1 shipped
+  - `getSidebarCollections` added to `src/lib/db/collections.ts` — the 5 most
+    recent collections plus all favorites, two bounded queries merged by id and
+    sorted by `updatedAt`. The dashboard layout uses it instead of loading every
+    collection and every join row on each navigation
+  - Reuses `SUMMARY_SELECT` and `toSummary`, so counts, dominant type and
+    tie-breaking are unchanged; `/collections` and the dashboard cards still
+    use `getRecentCollections`
+  - Verified against the seed: sidebar list, counts and colors identical to the
+    full query
+  - Finding 2 (full `content` fetched for every recent item) deferred.
+    Truncating needs raw SQL (`left(content, 500)`), which hardcodes table and
+    column names and bypasses schema type checking; tried, then reverted since
+    the schema can change at any point. Revisit Prisma-only, e.g. a limit once
+    a full `/items` list exists
+  - Built on branch `feature/query-performance`
