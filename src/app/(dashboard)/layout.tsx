@@ -1,7 +1,7 @@
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { SidebarProvider } from "@/components/dashboard/SidebarProvider";
 import { TopBar } from "@/components/dashboard/TopBar";
-import { getRecentCollections } from "@/lib/db/collections";
+import { getSidebarCollections } from "@/lib/db/collections";
 import { getItemTypesWithCounts } from "@/lib/db/items";
 import { getCurrentUser } from "@/lib/db/users";
 
@@ -10,7 +10,7 @@ export default async function DashboardLayout({
 }: LayoutProps<"/">) {
   const user = await getCurrentUser();
   const [collections, itemTypes] = await Promise.all([
-    getRecentCollections(user.id),
+    getSidebarCollections(user.id),
     getItemTypesWithCounts(user.id),
   ]);
 
